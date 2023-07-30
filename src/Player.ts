@@ -168,7 +168,7 @@ export class Player {
       case "RELOADING": {
         if (prevState !== "RELOADING") {
           this.sprite.anims.play(Animation.PLAYER_RELOADING, false);
-          this.scene.time.delayedCall(200, () => {
+          this.scene.time.delayedCall(500, () => {
             this.laser.reload();
             this.#state = "IDLE";
           });
