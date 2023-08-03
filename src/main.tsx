@@ -16,7 +16,11 @@ class Game extends Phaser.Scene {
     },
   ];
   #floor: Phaser.Types.Physics.Arcade.ImageWithStaticBody;
-  #swarm = new Swarm(this);
+  #swarm = new Swarm(this, {
+    x: 240,
+    y: 200,
+    enemyCount: 10,
+  });
   preload() {
     this.#Textures.forEach((texture) => {
       this.load.image(texture.name, texture.file);
@@ -35,18 +39,13 @@ class Game extends Phaser.Scene {
   }
   update() {
     this.physics.collide(this.#floor, this.#player.sprite);
-    this.physics.collide(this.#floor, this.#swarm.group);
-    this.physics.collide(
-      this.#player.laser.group,
-      this.#swarm.group,
-      (laser, enemy) => {
-        laser.destroy();
-        this.#swarm.kill(
-          enemy as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
-        );
-      }
-    );
-
+    this.#swarm.collideWith(this.#floor);
+    this.#swarm.collideWith(this.#player.laser.group, (enemy, laser) => {
+      laser.destroy();
+      this.#swarm.kill(
+        enemy as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
+      );
+    });
     this.#player.update();
     this.#swarm.update();
   }
@@ -56,11 +55,14 @@ const game = new Phaser.Game({
   width: 500,
   height: 340,
   backgroundColor: "#151123",
-  physics: { default: "arcade", arcade: { gravity: { y: 1000 } } },
+  physics: {
+    default: "arcade",
+    arcade: { gravity: { y: 1000 }, debug: false },
+  },
   parent: "root",
   autoFocus: false,
   scale: {
-    mode: Phaser.Scale.ZOOM_2X,
+    mode: Phaser.Scale.FIT,
     // autoCenter: Phaser.Scale.CENTER_BOTH,
     autoRound: true,
     zoom: 1,

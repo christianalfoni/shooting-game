@@ -1,3 +1,4 @@
+import { Battery } from "./Battery";
 import { Laser } from "./Laser";
 
 enum Spritesheet {
@@ -23,8 +24,10 @@ export class Player {
     "IDLE";
   #shotsToFire = 5;
   #reloadKey: Phaser.Input.Keyboard.Key;
+  #battery: Battery;
   constructor(private scene: Phaser.Scene) {
     this.laser = new Laser(scene);
+    this.#battery = new Battery(scene);
   }
   preload() {
     this.scene.load.spritesheet(
@@ -52,21 +55,21 @@ export class Player {
       }
     );
     this.laser.preload();
+    this.#battery.preload();
   }
   create() {
     this.#keys = this.scene.input.keyboard!.createCursorKeys();
     this.sprite = this.#createPlayerSprite();
     this.laser.create();
+    this.#battery.create();
     this.#reloadKey = this.scene.input.keyboard!.addKey("R");
   }
   #createPlayerSprite() {
-    const sprite = this.scene.physics.add.sprite(
-      10,
-      200,
-      Spritesheet.PLAYER_IDLE
-    );
+    const sprite = this.scene.physics.add
+      .sprite(10, 200, Spritesheet.PLAYER_IDLE)
+      .setScale(2);
 
-    sprite.setMaxVelocity(50, 1000);
+    sprite.setMaxVelocity(200, 1000);
     sprite.setDrag(200);
 
     this.scene.anims.create({
@@ -137,6 +140,8 @@ export class Player {
       this.#state = "IDLE";
     }
 
+    this.#battery.hide();
+
     switch (this.#state) {
       case "IDLE": {
         this.sprite.anims.play(Animation.PLAYER_IDLE, true);
@@ -149,7 +154,7 @@ export class Player {
         break;
       }
       case "RUNNING": {
-        velocityX = Math.min(this.#keys.right.getDuration() / 5, 50);
+        velocityX = Math.min(this.#keys.right.getDuration() / 5, 100);
         this.sprite.anims.play(Animation.PLAYER_RUN_RIGHT, true);
         break;
       }
@@ -163,6 +168,17 @@ export class Player {
         } else {
           this.laser.idle();
         }
+
+        const isLastShootingFrame = this.sprite.anims.currentFrame?.index === 3;
+
+        if (isLastShootingFrame) {
+          this.#battery.show(
+            this.sprite.x,
+            this.sprite.y,
+            100 - this.laser.shotsFired * 20
+          );
+        }
+
         break;
       }
       case "RELOADING": {
@@ -174,6 +190,7 @@ export class Player {
           });
         }
         this.laser.idle();
+
         break;
       }
     }

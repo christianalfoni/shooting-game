@@ -3,15 +3,31 @@ import * as Phaser from "phaser";
 enum Texture {
   LIZARD_MOVE = "LIZARD_MOVE",
   LIZARD_BLOOD = "LIZARD_BLOOD",
+  VORTEX = "VORTEX",
 }
 
 enum Animation {
   LIZARD_RUN = "LIZARD_RUN",
+  VORTEX = "VORTEX",
 }
 
+const MS_PER_ENEMY_EXIT_VORTEX = 250;
+const MS_VORTEX_SCALE_DURATION = 500;
+
 export class Swarm {
-  group: Phaser.Physics.Arcade.Group;
-  constructor(private scene: Phaser.Scene) {}
+  #group: Phaser.Physics.Arcade.Group;
+  #vortex: Phaser.Types.Physics.Arcade.SpriteWithStaticBody;
+  #x: number;
+  #y: number;
+  #enemyCount: number;
+  constructor(
+    private scene: Phaser.Scene,
+    options: { x: number; y: number; enemyCount: number }
+  ) {
+    this.#x = options.x;
+    this.#y = options.y;
+    this.#enemyCount = options.enemyCount;
+  }
   preload() {
     this.scene.load.spritesheet(
       Texture.LIZARD_MOVE,
@@ -25,9 +41,43 @@ export class Swarm {
       Texture.LIZARD_BLOOD,
       "characters/enemies/sprites/lizard/blood.png"
     );
+    this.scene.load.spritesheet(
+      Texture.VORTEX,
+      "environment/force-field/force-field.png",
+      {
+        frameWidth: 16,
+        frameHeight: 32,
+      }
+    );
   }
   create() {
-    this.group = this.scene.physics.add.group();
+    this.#group = this.scene.physics.add.group();
+
+    this.createAnimations();
+    this.createVortex();
+
+    this.scene.time.addEvent({
+      delay: Phaser.Math.Between(
+        MS_PER_ENEMY_EXIT_VORTEX - 50,
+        MS_PER_ENEMY_EXIT_VORTEX + 50
+      ),
+      repeat: this.#enemyCount,
+      callback: () => {
+        this.createEnemy();
+      },
+    });
+  }
+  private createEnemy() {
+    const enemy: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody =
+      this.#group.create(
+        this.#x,
+        Phaser.Math.Between(this.#y, this.#y),
+        Texture.LIZARD_MOVE
+      );
+
+    enemy.setVelocityX(-100).setOrigin(0.5);
+  }
+  private createAnimations() {
     this.scene.anims.create({
       key: Animation.LIZARD_RUN,
       frames: this.scene.anims.generateFrameNumbers(Texture.LIZARD_MOVE, {
@@ -36,22 +86,43 @@ export class Swarm {
       frameRate: 5,
       repeat: -1,
     });
-    this.scene.time.addEvent({
-      delay: 500,
-      repeat: 5,
-      callback: () => {
-        const enemy: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody =
-          this.group.create(
-            Phaser.Math.Between(240, 250),
-            Phaser.Math.Between(200, 240),
-            Texture.LIZARD_MOVE
-          );
-        enemy.setVelocityX(-50);
-      },
+    this.scene.anims.create({
+      key: Animation.VORTEX,
+      frames: this.scene.anims.generateFrameNumbers(Texture.VORTEX, {}),
+      frameRate: 10,
+      repeat: -1,
+    });
+  }
+  private createVortex() {
+    this.#vortex = this.scene.physics.add
+      .staticSprite(0, 0, Texture.VORTEX)
+      .setScale(2, 0)
+      .setOrigin(0.5);
+
+    this.scene.tweens.add({
+      targets: this.#vortex,
+      scale: 2,
+      duration: MS_VORTEX_SCALE_DURATION,
+      ease: "bounce.out",
+    });
+    this.scene.tweens.add({
+      targets: this.#vortex,
+      scale: 0,
+      duration: MS_VORTEX_SCALE_DURATION,
+      ease: "bounce.in",
+      delay: (this.#enemyCount + 1) * MS_PER_ENEMY_EXIT_VORTEX,
     });
   }
   update() {
-    this.group.getChildren().forEach((enemy) => {
+    this.updateVortex();
+    this.spawnEnemies();
+  }
+  private updateVortex() {
+    this.#vortex.setPosition(this.#x, this.#y);
+    this.#vortex.anims.play(Animation.VORTEX, true);
+  }
+  private spawnEnemies() {
+    this.#group.getChildren().forEach((enemy) => {
       if (
         !(
           enemy instanceof Phaser.Physics.Arcade.Sprite &&
@@ -59,6 +130,18 @@ export class Swarm {
         )
       ) {
         return;
+      }
+
+      const toCropFrom = this.#vortex.x + this.#vortex.width;
+      const toCrop = enemy.x - toCropFrom + enemy.width;
+      const isOverlappingEndOfVortex =
+        enemy.y + enemy.displayHeight >
+        this.#vortex.y + this.#vortex.displayHeight;
+
+      if (toCrop > 0 && !isOverlappingEndOfVortex) {
+        enemy.setCrop(0, 0, 32 - toCrop, 32);
+      } else {
+        enemy.setCrop();
       }
 
       if (enemy.body.onFloor()) {
@@ -83,5 +166,11 @@ export class Swarm {
     });
     emitter.explode();
     enemy.destroy();
+  }
+  collideWith<T extends Phaser.Types.Physics.Arcade.ArcadeColliderType>(
+    target: T,
+    cb?: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback
+  ) {
+    this.scene.physics.collide(this.#group, target, cb);
   }
 }
