@@ -20,6 +20,9 @@ export class Swarm {
   #x: number;
   #y: number;
   #enemyCount: number;
+  get collider() {
+    return this.#group;
+  }
   constructor(
     private scene: Phaser.Scene,
     options: { x: number; y: number; enemyCount: number }
@@ -166,11 +169,5 @@ export class Swarm {
     });
     emitter.explode();
     enemy.destroy();
-  }
-  collideWith<T extends Phaser.Types.Physics.Arcade.ArcadeColliderType>(
-    target: T,
-    cb?: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback
-  ) {
-    this.scene.physics.collide(this.#group, target, cb);
   }
 }

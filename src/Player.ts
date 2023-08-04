@@ -17,16 +17,22 @@ enum Animation {
 }
 
 export class Player {
-  sprite: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-  laser: Laser;
+  #sprite: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+  #laser: Laser;
   #keys: Phaser.Types.Input.Keyboard.CursorKeys;
   #state: "IDLE" | "RUNNING" | "RUNNING_BACKWARDS" | "SHOOTING" | "RELOADING" =
     "IDLE";
   #shotsToFire = 5;
   #reloadKey: Phaser.Input.Keyboard.Key;
   #battery: Battery;
+  get colliders() {
+    return {
+      player: this.#sprite,
+      laser: this.#laser.collider,
+    };
+  }
   constructor(private scene: Phaser.Scene) {
-    this.laser = new Laser(scene);
+    this.#laser = new Laser(scene);
     this.#battery = new Battery(scene);
   }
   preload() {
@@ -54,13 +60,13 @@ export class Player {
         frameHeight: 38,
       }
     );
-    this.laser.preload();
+    this.#laser.preload();
     this.#battery.preload();
   }
   create() {
     this.#keys = this.scene.input.keyboard!.createCursorKeys();
-    this.sprite = this.#createPlayerSprite();
-    this.laser.create();
+    this.#sprite = this.#createPlayerSprite();
+    this.#laser.create();
     this.#battery.create();
     this.#reloadKey = this.scene.input.keyboard!.addKey("R");
   }
@@ -129,7 +135,7 @@ export class Player {
     } else if (
       this.#keys.space.isDown &&
       (this.#state === "SHOOTING" || this.#state === "RELOADING") &&
-      this.laser.shotsFired === this.#shotsToFire
+      this.#laser.shotsFired === this.#shotsToFire
     ) {
       this.#state = "RELOADING";
     } else if (this.#keys.space.isDown) {
@@ -144,38 +150,39 @@ export class Player {
 
     switch (this.#state) {
       case "IDLE": {
-        this.sprite.anims.play(Animation.PLAYER_IDLE, true);
-        this.laser.idle();
+        this.#sprite.anims.play(Animation.PLAYER_IDLE, true);
+        this.#laser.idle();
         break;
       }
       case "RUNNING_BACKWARDS": {
         velocityX = -Math.min(this.#keys.left.getDuration() / 5, 50);
-        this.sprite.anims.play(Animation.PLAYER_RUN_LEFT, true);
+        this.#sprite.anims.play(Animation.PLAYER_RUN_LEFT, true);
         break;
       }
       case "RUNNING": {
         velocityX = Math.min(this.#keys.right.getDuration() / 5, 100);
-        this.sprite.anims.play(Animation.PLAYER_RUN_RIGHT, true);
+        this.#sprite.anims.play(Animation.PLAYER_RUN_RIGHT, true);
         break;
       }
       case "SHOOTING": {
         if (prevState !== "SHOOTING") {
-          this.sprite.anims.play(Animation.PLAYER_SHOOT, false);
+          this.#sprite.anims.play(Animation.PLAYER_SHOOT, false);
         }
 
-        if (this.laser.shotsFired < this.#shotsToFire) {
-          this.laser.shoot();
+        if (this.#laser.shotsFired < this.#shotsToFire) {
+          this.#laser.shoot();
         } else {
-          this.laser.idle();
+          this.#laser.idle();
         }
 
-        const isLastShootingFrame = this.sprite.anims.currentFrame?.index === 3;
+        const isLastShootingFrame =
+          this.#sprite.anims.currentFrame?.index === 3;
 
         if (isLastShootingFrame) {
           this.#battery.show(
-            this.sprite.x,
-            this.sprite.y,
-            100 - this.laser.shotsFired * 20
+            this.#sprite.x,
+            this.#sprite.y,
+            100 - this.#laser.shotsFired * 20
           );
         }
 
@@ -183,27 +190,27 @@ export class Player {
       }
       case "RELOADING": {
         if (prevState !== "RELOADING") {
-          this.sprite.anims.play(Animation.PLAYER_RELOADING, false);
+          this.#sprite.anims.play(Animation.PLAYER_RELOADING, false);
           this.scene.time.delayedCall(500, () => {
-            this.laser.reload();
+            this.#laser.reload();
             this.#state = "IDLE";
           });
         }
-        this.laser.idle();
+        this.#laser.idle();
 
         break;
       }
     }
 
-    this.sprite.setVelocityX(velocityX);
+    this.#sprite.setVelocityX(velocityX);
 
     if (
       Phaser.Input.Keyboard.JustDown(this.#keys.up) &&
-      this.sprite.body.onFloor()
+      this.#sprite.body.onFloor()
     ) {
-      this.sprite.body.velocity.y = -100;
+      this.#sprite.body.velocity.y = -100;
     }
 
-    this.laser.update(this.sprite.x, this.sprite.y);
+    this.#laser.update(this.#sprite.x, this.#sprite.y);
   }
 }

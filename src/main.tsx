@@ -1,15 +1,15 @@
 import * as Phaser from "phaser";
 import { Player } from "./Player";
 import { Swarm } from "./Swarm";
-import { Texture } from "./types";
+import { TextureData } from "./types";
 
-enum TextureId {
+enum Texture {
   FLOOR,
 }
 
 class Game extends Phaser.Scene {
   #player = new Player(this);
-  #Textures: Texture[] = [
+  #Textures: TextureData[] = [
     {
       name: "floor",
       file: "floor.png",
@@ -34,18 +34,23 @@ class Game extends Phaser.Scene {
     this.#floor = this.physics.add.staticSprite(
       10,
       325,
-      this.#Textures[TextureId.FLOOR].name
+      this.#Textures[Texture.FLOOR].name
     );
   }
   update() {
-    this.physics.collide(this.#floor, this.#player.sprite);
-    this.#swarm.collideWith(this.#floor);
-    this.#swarm.collideWith(this.#player.laser.group, (enemy, laser) => {
-      laser.destroy();
-      this.#swarm.kill(
-        enemy as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
-      );
-    });
+    this.physics.collide(this.#floor, this.#player.colliders.player);
+    this.physics.collide(this.#floor, this.#swarm.collider);
+    this.physics.collide(
+      this.#player.colliders.laser,
+      this.#swarm.collider,
+      (laser, enemy) => {
+        laser.destroy();
+        this.#swarm.kill(
+          enemy as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
+        );
+      }
+    );
+
     this.#player.update();
     this.#swarm.update();
   }

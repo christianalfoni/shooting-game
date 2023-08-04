@@ -11,11 +11,14 @@ enum Animation {
 }
 
 export class Laser {
-  group: Phaser.Physics.Arcade.Group;
+  #group: Phaser.Physics.Arcade.Group;
   #fadingGroup: Phaser.Physics.Arcade.Group;
   #lastShot = 0;
   #state: "idle" | "shooting" = "idle";
   shotsFired = 0;
+  get collider() {
+    return this.#group;
+  }
   constructor(private scene: Phaser.Scene) {}
   preload() {
     this.scene.load.spritesheet(
@@ -36,7 +39,7 @@ export class Laser {
     );
   }
   create() {
-    this.group = this.scene.physics.add.group(undefined, {
+    this.#group = this.scene.physics.add.group(undefined, {
       allowGravity: false,
     });
     this.#fadingGroup = this.scene.physics.add.group(undefined, {
@@ -55,14 +58,14 @@ export class Laser {
     });
   }
   update(playerX: number, playerY: number) {
-    this.group.setVelocityX(200);
+    this.#group.setVelocityX(200);
     this.#fadingGroup.setVelocityX(200);
 
     if (this.#state === "shooting") {
       if (this.#lastShot > 250) {
         const x = playerX + 40;
         const laser: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody =
-          this.group.create(x, playerY + 3, Spritesheet.LASER);
+          this.#group.create(x, playerY + 3, Spritesheet.LASER);
 
         laser.body.setAllowGravity(false);
         laser.setData("initialX", x);
@@ -79,7 +82,7 @@ export class Laser {
       this.#lastShot = 0;
     }
 
-    this.group.getChildren().forEach((laser) => {
+    this.#group.getChildren().forEach((laser) => {
       if (
         !(
           laser instanceof Phaser.Physics.Arcade.Sprite &&
@@ -92,7 +95,7 @@ export class Laser {
       const initialX = laser.getData("initialX") as number;
 
       if (laser.x > initialX + 60) {
-        this.group.remove(laser);
+        this.#group.remove(laser);
         laser.anims.play(Animation.SHOOT_FADE, false);
         this.#fadingGroup.add(laser);
       }

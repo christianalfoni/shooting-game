@@ -1,4 +1,4 @@
-export type Texture = {
+export type TextureData = {
   name: string;
   file: string;
 };
