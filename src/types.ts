@@ -1,3 +1,7 @@
+export enum EnemyType {
+  LIZARD = "LIZARD",
+}
+
 export type TextureData = {
   name: string;
   file: string;
